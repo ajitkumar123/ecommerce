@@ -26,20 +26,43 @@ class Product extends Model
             SELECT SQL_CALC_FOUND_ROWS id, `title`, `thumbnail`, `available_price`, `mrp`, `stock` FROM `product`
         ";
         $sql .= $this->getSql($q,$category ,
-                $subcategorys, $brand_tagged , $price_range ,
+                $subcategorys,
+                $brand_tagged ,
+                $price_range ,
                 $stock,
                 $from, $length
             );
 
         $stmt = $this->dbObj->prepare($sql);
         $stmt->execute();
-        return $stmt->fetchAll();
+        $result =  $stmt->fetchAll();
+
+        if(empty($result)){
+            $sql = "
+            SELECT SQL_CALC_FOUND_ROWS id, `title`, `thumbnail`, `available_price`, `mrp`, `stock` FROM `product`
+        ";
+            $sql .= $this->getSql($q,$category ,
+                $subcategorys,
+                $brand_tagged ,
+                $price_range ,
+                $stock,
+                $from, $length,'Like'
+            );
+
+            $stmt = $this->dbObj->prepare($sql);
+            $stmt->execute();
+            $result =  $stmt->fetchAll();
+        }
+
+        return $result;
+
     }
 
     private function getSql($q, $category ,
         $subcategorys, $brand_taggeds , $price_range ,
         $stock,
-        $from, $length
+        $from, $length,
+        $using = 'Full Text'
     ){
 
         $sql = "";$cond = [];
@@ -82,13 +105,20 @@ class Product extends Model
         if(!empty($stock) && $stock == 'yes'){
             $cond[] = "stock != 'Out of Stock' " ;
         }
-        if(!empty($q)){
+        if(!empty($q) && $using == 'Full Text'){
             $cond[] .= ' MATCH(category, subcategory, brand_tagged, category_tagged, title ) AGAINST( "'.$q.'"  )';
+        }
+        if(!empty($q) && $using == 'Like'){
+            $cond[] .= ' (category LIKE "%'.$q.'%"
+                        OR subcategory LIKE "%'.$q.'%"
+                        OR brand_tagged LIKE "%'.$q.'%"
+                        OR category_tagged LIKE "%'.$q.'%"
+                        OR title LIKE "%'.$q.'%" )';
         }
         if(!empty($cond)){
             $sql .= " WHERE ". implode(' AND ', $cond);
         }
-        if(!empty($q)){
+        if(!empty($q) && $using = 'Full Text' ){
             $sql .= ' ORDER BY MATCH(category, subcategory, brand_tagged, category_tagged, title ) AGAINST( "'.$q.'"  ) DESC';
         }
         $sql .= " LIMIT ".($from-1)*$length . ', '. $length;
@@ -138,36 +168,6 @@ class Product extends Model
         $stmt = $this->dbObj->prepare($sql);
         $stmt->execute([$category]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
-    }
-
-    public function search($q,$category = '',
-        Array $subcategorys = [], Array $brand_tagged = [], $price_range = '',
-        $stock = false,
-        $from = 1, $length = 21){
-        $sql = "
-            SELECT SQL_CALC_FOUND_ROWS id, `title`, `thumbnail`, `available_price`, `mrp`, `stock` FROM `product`
-        ";
-        $sql .= $this->getSql($q,$category ,
-            $subcategorys, $brand_tagged , $price_range ,
-            $stock,
-            $from, $length
-        );
-        $stmt = $this->dbObj->prepare($sql);
-        $stmt->execute();
-        $result = $stmt->fetchAll();
-
-        if(empty($result)){
-            $sql = "
-            SELECT SQL_CALC_FOUND_ROWS id, `title`, `thumbnail`, `available_price`, `mrp`, `stock` FROM `product`
-        ";
-            $sql .= ' WHERE  title LIKE "%'.$q.'%" ';
-            $sql .= " LIMIT ".($start-1)*$length . ', '. $length;
-            $stmt = $this->dbObj->prepare($sql);
-            $stmt->execute();
-            $result = $stmt->fetchAll();
-        }
-
-        return $result;
     }
 
 }

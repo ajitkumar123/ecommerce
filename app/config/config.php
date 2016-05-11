@@ -6,7 +6,7 @@
  * Time: 1:49 AM
  */
 error_reporting(E_ALL);
-ini_set("display_errors", 0);
+ini_set("display_errors", 1);
 
 define('DB_TYPE', 'mysql');
 define('DB_HOST', 'localhost');

@@ -40,7 +40,6 @@ function sendParams(){
 function urlGenerator(){
     this.generate = function(key, val){
         var params = this.URLToArray(window.location.href);
-        console.log(params);
         if(!(key in params)){
             params[key] = val;
         }else{
@@ -60,33 +59,71 @@ function urlGenerator(){
                 }
             }
         }
-        console.log(params);
         if(params){
             var url = this.ArrayToURL(params);
             var url = window.location.href.substring(0, window.location.href.indexOf('?')) + '?' + url;
-            window.location = url;
+            //window.location = url;
         }else{
-            window.location = window.location.href.substring(0, window.location.href.indexOf('?'));
+            //window.location = window.location.href.substring(0, window.location.href.indexOf('?'));
+            var url = window.location.href.substring(0, window.location.href.indexOf('?'));
         }
+        $urlObj.pushState(url);
+        $urlObj.ajaxCall(url);
+    },
+    this.popState = function(){
+        history.replaceState({ url:document.location.href }, document.title, document.location.href);
 
+        window.addEventListener('popstate', function(event) {
+            $urlObj.ajaxCall(event.state.url);
+        });
+    },
+
+    this.pushState = function(url){
+        history.pushState({
+            url:url
+        }, '---', url);
+    },
+    this.ajaxCall = function(url){
+        $.ajax({
+            url: url,
+            data: {
+                ajax: '1'
+            },
+            error: function() {
+                alert('<p>An error has occurred</p>');
+            },
+            success: function(data) {
+                $('#content_snippet').replaceWith(data);
+                $obj.subCategoryClick();
+                $obj.brandsClick();
+                $obj.priceClick();
+                $obj.stockClick();
+                $obj.searchClick();
+            },
+            type: 'GET'
+        });
     },
     this.URLToArray = function(url) {
         var request = {};
-        var pairs = url.substring(url.indexOf('?') + 1).split('&');
+        var pairs = {};
+        if(url.indexOf('?') !== -1)
+            pairs = url.substring(url.indexOf('?') + 1).split('&');
+
         for (var i = 0; i < pairs.length; i++) {
             if(!pairs[i])
                 continue;
             var pair = pairs[i].split('=');
             request[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
         }
+
         return request;
     },
     this.ArrayToURL = function (array) {
         var pairs = [];
         for (var key in array)
             if (array.hasOwnProperty(key))
-
                 pairs.push(encodeURIComponent(key) + '=' + encodeURIComponent(array[key]));
+
         return pairs.join('&');
     }
 }
@@ -98,3 +135,4 @@ $obj.brandsClick();
 $obj.priceClick();
 $obj.stockClick();
 $obj.searchClick();
+$urlObj.popState();
